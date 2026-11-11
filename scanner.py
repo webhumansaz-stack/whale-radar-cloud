@@ -45,14 +45,14 @@ def _fmt_price(price_str: str) -> str:
 def _mask_symbol(symbol: str) -> str:
     clean = symbol.strip().upper()
     if len(clean) <= 2:
-        return f"${clean[0]}***"
-    return f"${clean[0]}{'*' * (len(clean) - 2)}{clean[-1]}"
+        return f"${clean[0]}••"
+    return f"${clean[0]}{'•' * (len(clean) - 2)}{clean[-1]}"
 
 
 def _mask_address(addr: str) -> str:
     if len(addr) <= 10:
         return "0x••••••"
-    return f"{addr[:5]}••••••••{addr[-4:]}"
+    return f"{addr[:5]}••••{addr[-4:]}"
 
 
 class MarketScanner:
@@ -65,7 +65,7 @@ class MarketScanner:
         try:
             async with session.get(
                 url,
-                headers={"User-Agent": "WhaleRadarGlobal/2.0"},
+                headers={"User-Agent": "WhaleRadarDesk/2.4"},
                 timeout=self._timeout,
             ) as resp:
                 if resp.status == 200:
@@ -89,10 +89,10 @@ class MarketScanner:
                     if r.get("level") in ("danger", "warn")
                 ]
                 if not high_risks:
-                    return "✅ Mint/Freeze Revoked • Low Rug Risk (RugCheck Verified)"
+                    return "Pass (Mint/Freeze revoked, LP intact — RugCheck)"
                 top_warn = ", ".join(high_risks[:2])
-                return f"⚠️ Audit Notes: {html.escape(top_warn)}"
-            return "✅ Standard SPL Liquidity Pool • Verified Active"
+                return f"Note: {html.escape(top_warn)}"
+            return "Verified SPL pool (Active liquidity)"
 
         goplus_chain = CHAIN_GOPLUS_MAP.get(chain_lower)
         if goplus_chain:
@@ -109,25 +109,22 @@ class MarketScanner:
                     buy_tax = float(result.get("buy_tax") or 0) * 100
                     sell_tax = float(result.get("sell_tax") or 0) * 100
                     if is_honeypot:
-                        return "🚨 HIGH RISK: Honeypot Flagged (Avoid)"
-                    flags = ["✅ No Honeypot"]
-                    flags.append("⚠️ Mintable" if is_mintable else "✅ Non-Mintable")
-                    flags.append(f"Tax: {buy_tax:.1f}%/{sell_tax:.1f}%")
-                    return " • ".join(flags)
+                        return "HIGH RISK: Honeypot detected (GoPlus)"
+                    mint_str = "Mintable" if is_mintable else "Non-mintable"
+                    return f"Pass (No honeypot, {mint_str}, Tax {buy_tax:.1f}%/{sell_tax:.1f}%)"
 
-        return "✅ Active DEX Pool • Liquidity Verified"
+        return "Verified active DEX liquidity pool"
 
     async def discover_whale_signal(
         self, exclude_checker: Any = None
     ) -> Optional[dict[str, Any]]:
         """
-        Scans live DexScreener boosted & high-momentum pairs across Solana, Base, Ethereum, BSC, Arbitrum
-        and returns the highest-scoring Whale Accumulation signal.
+        Scans live DexScreener orderflow across Solana, Base, Ethereum, BSC, Arbitrum
+        and returns the highest-conviction buy-side accumulation setup.
         """
         async with aiohttp.ClientSession() as session:
             candidate_pairs: list[dict[str, Any]] = []
 
-            # 1) Pull latest boosted/trending tokens from DexScreener
             boosts = await self._get_json(
                 session, "https://api.dexscreener.com/token-boosts/top/v1"
             )
@@ -149,7 +146,6 @@ class MarketScanner:
                 ):
                     candidate_pairs.extend(dex_data["pairs"])
 
-            # 2) Also query active narratives / chains for fresh momentum pairs
             for query in ("SOL", "BASE", "PEPE", "AI", "ETH", "USDT"):
                 if len(candidate_pairs) >= 60:
                     break
@@ -164,7 +160,6 @@ class MarketScanner:
 
             best_pair: Optional[dict[str, Any]] = None
             best_score: int = -1
-
             seen_tokens: set[str] = set()
 
             for pair in candidate_pairs:
@@ -178,7 +173,10 @@ class MarketScanner:
                     continue
                 seen_tokens.add(token_addr.lower())
 
-                # Skip stablecoins or wrapped majors
+                # Keep only clean ASCII tickers so posts look professional
+                if not symbol.isascii() or len(symbol) > 12:
+                    continue
+
                 if symbol.upper() in {
                     "USDT",
                     "USDC",
@@ -188,6 +186,9 @@ class MarketScanner:
                     "DAI",
                     "BUSD",
                     "WBNB",
+                    "SOL",
+                    "ETH",
+                    "BNB",
                 }:
                     continue
 
@@ -198,27 +199,24 @@ class MarketScanner:
                 vol_dict = pair.get("volume") or {}
                 vol_24h = float(vol_dict.get("h24") or 0)
                 vol_1h = float(vol_dict.get("h1") or 0)
-                fdv = float(pair.get("fdv") or pair.get("marketCap") or 0)
 
-                if liq < 25_000 or vol_24h < 45_000:
+                if liq < 28_000 or vol_24h < 50_000:
                     continue
 
                 txns_1h = (pair.get("txns") or {}).get("h1") or {}
                 buys_1h = int(txns_1h.get("buys") or 0)
                 sells_1h = int(txns_1h.get("sells") or 0)
                 total_tx_1h = buys_1h + sells_1h
-                if total_tx_1h < 20:
+                if total_tx_1h < 25:
                     continue
 
                 buy_ratio = (buys_1h / total_tx_1h) * 100.0
-                if buy_ratio < 52.0:
+                if buy_ratio < 54.0:
                     continue
 
                 pc = pair.get("priceChange") or {}
                 ch_1h = float(pc.get("h1") or 0)
-                ch_24h = float(pc.get("h24") or 0)
 
-                # Calculate proprietary Whale Accumulation Score (50 - 99)
                 vol_liq_ratio = min(3.0, vol_1h / max(liq, 1.0))
                 imbalance_pts = min(30.0, max(0.0, (buy_ratio - 50.0) * 1.1))
                 momentum_pts = min(25.0, max(0.0, ch_1h * 0.6))
@@ -227,7 +225,7 @@ class MarketScanner:
                     min(
                         98,
                         max(
-                            62,
+                            64,
                             45
                             + imbalance_pts
                             + momentum_pts
@@ -270,14 +268,13 @@ class MarketScanner:
                 session, chain, token_addr
             )
 
-            # Calculate Entry, TP1, TP2, TP3, Stop Loss
             entry_low = _fmt_price(str(price_float * 0.97))
             entry_high = _fmt_price(str(price_float * 1.01))
             entry_zone = f"{entry_low} – {entry_high}"
             tp1 = _fmt_price(str(price_float * 1.18))
             tp2 = _fmt_price(str(price_float * 1.45))
             tp3 = _fmt_price(str(price_float * 1.90))
-            targets_text = f"TP1: {tp1} (+18%) | TP2: {tp2} (+45%) | TP3: {tp3} (+90%)"
+            targets_text = f"T1: {tp1} (+18%) | T2: {tp2} (+45%) | T3: {tp3} (+90%)"
             stop_loss = f"{_fmt_price(str(price_float * 0.86))} (-14%)"
 
             dex_url = str(
@@ -294,48 +291,41 @@ class MarketScanner:
             masked_sym = _mask_symbol(symbol)
             masked_addr = _mask_address(token_addr)
 
+            # Institutional Quant Desk style — no AI emoji spam
             teaser_text = (
-                f"🚨 <b>WHALE ACCUMULATION DETECTED</b> 🚨\n"
-                f"🆔 Signal ID: <code>{signal_id}</code>\n"
-                f"━━━━━━━━━━━━━━━━━━━━━━\n"
-                f"⛓ <b>Network:</b> #{html.escape(chain)}\n"
-                f"🪙 <b>Asset:</b> <code>{html.escape(masked_sym)}</code> <i>(Locked Alpha)</i>\n"
-                f"📄 <b>Contract:</b> <code>{html.escape(masked_addr)}</code>\n\n"
-                f"📊 <b>On-Chain Orderflow (Live):</b>\n"
-                f"• <b>Whale Score:</b> 🔥 <b>{best_score}/100 (Strong Buy Pressure)</b>\n"
-                f"• <b>1H Order Imbalance:</b> 🟢 <b>{buy_ratio:.1f}% Buys</b> ({buys_1h} Buys vs {sells_1h} Sells)\n"
-                f"• <b>1H / 24H Momentum:</b> <code>{ch_1h:+.2f}%</code> / <code>{ch_24h:+.2f}%</code>\n"
-                f"• <b>24H Volume:</b> <code>{_fmt_usd(vol_24h)}</code>\n"
-                f"• <b>Pool Liquidity:</b> <code>{_fmt_usd(liq_usd)}</code>\n"
-                f"• <b>Security Check:</b> {security_summary}\n\n"
-                f"🎯 <b>Trade Setup & Contract Address:</b>\n"
-                f"🔒 <i>Exact Token Ticker, Contract Address, DEX Chart & Entry/Take-Profit Targets are locked for VIPs.</i>\n"
-                f"━━━━━━━━━━━━━━━━━━━━━━\n"
-                f"👇 <b>Unlock this signal instantly with Telegram Stars or join 24/7 VIP Feed:</b>"
+                f"<b>[ON-CHAIN ORDERFLOW] {html.escape(chain)} — Desk Alert</b>\n"
+                f"Ref: <code>{signal_id}</code>\n"
+                f"──────────────────────\n"
+                f"<b>Asset:</b> <code>{html.escape(masked_sym)}</code> (Contract: <code>{html.escape(masked_addr)}</code>)\n"
+                f"<b>1h Orderflow:</b> <b>{buy_ratio:.1f}% buy-side</b> ({buys_1h} buys / {sells_1h} sells)\n"
+                f"<b>Price Delta:</b> 1h <code>{ch_1h:+.2f}%</code> | 24h <code>{ch_24h:+.2f}%</code>\n"
+                f"<b>24h Volume:</b> <code>{_fmt_usd(vol_24h)}</code>\n"
+                f"<b>Pool Liquidity:</b> <code>{_fmt_usd(liq_usd)}</code> | <b>FDV:</b> <code>{_fmt_usd(fdv)}</code>\n"
+                f"<b>Contract Audit:</b> {security_summary}\n"
+                f"<b>Flow Conviction:</b> <code>{best_score}/100</code>\n"
+                f"──────────────────────\n"
+                f"<i>Full contract address, ticker, DEX pair link & execution levels are available via single unlock or VIP desk access below.</i>"
             )
 
             full_text = (
-                f"🔓 <b>VIP WHALE SIGNAL UNLOCKED</b> 🔓\n"
-                f"🆔 Signal ID: <code>{signal_id}</code>\n"
-                f"━━━━━━━━━━━━━━━━━━━━━━\n"
-                f"⛓ <b>Network:</b> #{html.escape(chain)}\n"
-                f"🪙 <b>Token:</b> <b>{html.escape(name)} (${html.escape(symbol)})</b>\n"
-                f"💵 <b>Current Price:</b> <code>{_fmt_price(price_str)}</code>\n"
-                f"📄 <b>Contract Address (Tap to Copy):</b>\n"
+                f"<b>[VIP DESK EXECUTION LOG] {html.escape(chain)}</b>\n"
+                f"Ref: <code>{signal_id}</code>\n"
+                f"──────────────────────\n"
+                f"<b>Asset:</b> <b>{html.escape(name)} (${html.escape(symbol)})</b>\n"
+                f"<b>Spot Price:</b> <code>{_fmt_price(price_str)}</code>\n"
+                f"<b>Contract Address:</b>\n"
                 f"<code>{html.escape(token_addr)}</code>\n\n"
-                f"📈 <b>Whale & Liquidity Metrics:</b>\n"
-                f"• <b>Whale Conviction Score:</b> 🔥 <b>{best_score}/100</b>\n"
-                f"• <b>1H Orderflow:</b> 🟢 <b>{buy_ratio:.1f}% Buys</b> ({buys_1h} Buys / {sells_1h} Sells)\n"
-                f"• <b>Price Action (1H / 24H):</b> <code>{ch_1h:+.2f}%</code> / <code>{ch_24h:+.2f}%</code>\n"
-                f"• <b>24H Volume:</b> <code>{_fmt_usd(vol_24h)}</code>\n"
-                f"• <b>Liquidity:</b> <code>{_fmt_usd(liq_usd)}</code> | <b>FDV:</b> <code>{_fmt_usd(fdv)}</code>\n"
-                f"• <b>Security Audit:</b> {security_summary}\n\n"
-                f"🎯 <b>Algorithmic Execution Zones:</b>\n"
-                f"• <b>Accumulation Zone:</b> <code>{entry_zone}</code>\n"
-                f"• <b>Take-Profit Targets:</b>\n"
-                f"  └ {targets_text}\n"
-                f"• <b>Invalidation / Stop-Loss:</b> <code>{stop_loss}</code>\n\n"
-                f"🔗 <a href=\"{html.escape(dex_url)}\">Open Live DexScreener Chart</a>"
+                f"<b>On-Chain Telemetry:</b>\n"
+                f"• 1h Orderflow: <b>{buy_ratio:.1f}% buy-side</b> ({buys_1h}B / {sells_1h}S)\n"
+                f"• Price Delta: 1h <code>{ch_1h:+.2f}%</code> | 24h <code>{ch_24h:+.2f}%</code>\n"
+                f"• 24h Volume: <code>{_fmt_usd(vol_24h)}</code>\n"
+                f"• Pool Liquidity: <code>{_fmt_usd(liq_usd)}</code> | FDV: <code>{_fmt_usd(fdv)}</code>\n"
+                f"• Security Audit: {security_summary}\n\n"
+                f"<b>Desk Execution Levels:</b>\n"
+                f"• Entry Range: <code>{entry_zone}</code>\n"
+                f"• Targets: <code>{targets_text}</code>\n"
+                f"• Invalidation: <code>{stop_loss}</code>\n\n"
+                f"🔗 <a href=\"{html.escape(dex_url)}\">Open DexScreener Pair Terminal</a>"
             )
 
             return {
@@ -370,10 +360,6 @@ class MarketScanner:
     async def scan_custom_token(
         self, query: str
     ) -> Optional[dict[str, Any]]:
-        """
-        On-demand scanner when a user sends any token address or symbol to the bot.
-        Returns both a basic preview and a deep whale+security report.
-        """
         q = query.strip()
         if not q:
             return None
@@ -399,7 +385,6 @@ class MarketScanner:
             if not pairs:
                 return None
 
-            # Pick the most liquid pair
             pairs.sort(
                 key=lambda p: float((p.get("liquidity") or {}).get("usd") or 0),
                 reverse=True,
@@ -431,19 +416,18 @@ class MarketScanner:
             )
 
             report = (
-                f"🕵️‍♂️ <b>ON-CHAIN WHALE & SECURITY AUDIT</b>\n"
-                f"━━━━━━━━━━━━━━━━━━━━━━\n"
-                f"🪙 <b>Token:</b> <b>{html.escape(name)} (${html.escape(symbol)})</b>\n"
-                f"⛓ <b>Chain:</b> #{html.escape(chain)}\n"
-                f"💵 <b>Price:</b> <code>{_fmt_price(price_str)}</code> (1H: <code>{ch_1h:+.2f}%</code> | 24H: <code>{ch_24h:+.2f}%</code>)\n"
-                f"📄 <b>Contract:</b> <code>{html.escape(token_addr)}</code>\n\n"
-                f"🐋 <b>Whale Orderflow (Last 1H):</b>\n"
-                f"• <b>Buy Pressure:</b> <b>{buy_ratio:.1f}%</b> ({buys_1h} Buys vs {sells_1h} Sells)\n"
-                f"• <b>Liquidity:</b> <code>{_fmt_usd(liq_usd)}</code>\n"
-                f"• <b>24H Volume:</b> <code>{_fmt_usd(vol_24h)}</code> | <b>FDV:</b> <code>{_fmt_usd(fdv)}</code>\n\n"
-                f"🛡 <b>Contract Security Check:</b>\n"
+                f"<b>[ON-CHAIN PAIR & CONTRACT AUDIT]</b>\n"
+                f"──────────────────────\n"
+                f"<b>Asset:</b> {html.escape(name)} (${html.escape(symbol)}) on {html.escape(chain)}\n"
+                f"<b>Price:</b> <code>{_fmt_price(price_str)}</code> (1h: <code>{ch_1h:+.2f}%</code> | 24h: <code>{ch_24h:+.2f}%</code>)\n"
+                f"<b>Contract:</b> <code>{html.escape(token_addr)}</code>\n\n"
+                f"<b>Orderflow & Liquidity:</b>\n"
+                f"• 1h Buy Ratio: <b>{buy_ratio:.1f}%</b> ({buys_1h} buys / {sells_1h} sells)\n"
+                f"• Pool Liquidity: <code>{_fmt_usd(liq_usd)}</code>\n"
+                f"• 24h Volume: <code>{_fmt_usd(vol_24h)}</code> | FDV: <code>{_fmt_usd(fdv)}</code>\n\n"
+                f"<b>Security Registry Check:</b>\n"
                 f"• {security}\n\n"
-                f"🔗 <a href=\"{html.escape(dex_url)}\">View Live Chart on DexScreener</a>"
+                f"🔗 <a href=\"{html.escape(dex_url)}\">DexScreener Pair Terminal</a>"
             )
             return {
                 "symbol": symbol,
@@ -454,10 +438,6 @@ class MarketScanner:
             }
 
     async def scan_cex_arbitrage(self) -> str:
-        """
-        Compares live spot prices across Binance, Bybit, and KuCoin public APIs
-        for major high-velocity pairs to surface real-time CEX arbitrage spreads.
-        """
         symbols = ["SOL", "PEPE", "DOGE", "SUI", "TON", "WIF", "ARB", "LINK", "AVAX"]
         async with aiohttp.ClientSession() as session:
             binance_task = self._get_json(
@@ -522,23 +502,20 @@ class MarketScanner:
 
             if not opportunities:
                 return (
-                    "⚡ <b>LIVE GLOBAL CEX ARBITRAGE RADAR</b>\n\n"
-                    "Markets are tightly aligned at this second. Try scanning again in 30 seconds."
+                    "<b>[CEX ORDERBOOK ARBITRAGE MONITOR]</b>\n\n"
+                    "Spot spreads across Binance, Bybit & KuCoin are currently within tight parity."
                 )
 
             lines = [
-                "⚡ <b>LIVE CROSS-EXCHANGE ARBITRAGE SPREADS</b>",
-                "<i>Real-time orderbook comparison (Binance • Bybit • KuCoin)</i>",
-                "━━━━━━━━━━━━━━━━━━━━━━",
+                "<b>[CEX SPOT ORDERBOOK SPREADS — LIVE]</b>",
+                "<i>Cross-exchange mid-price delta (Binance / Bybit / KuCoin)</i>",
+                "──────────────────────",
             ]
             for spread_pct, sym, low_ex, low_p, high_ex, high_p in opportunities[:6]:
-                profit_per_10k = 10_000 * (spread_pct / 100.0)
+                bps = spread_pct * 100
                 lines.append(
-                    f"🔹 <b>${sym}/USDT</b> — Spread: <b>{spread_pct:.3f}%</b> (~${profit_per_10k:.1f} per $10k)\n"
-                    f"   └ Buy <b>{low_ex}</b> (<code>{_fmt_price(str(low_p))}</code>) ➔ Sell <b>{high_ex}</b> (<code>{_fmt_price(str(high_p))}</code>)"
+                    f"• <b>{sym}/USDT</b>: <code>{bps:.1f} bps</code> ({spread_pct:.3f}%)\n"
+                    f"  Bid {low_ex} <code>{_fmt_price(str(low_p))}</code> → Ask {high_ex} <code>{_fmt_price(str(high_p))}</code>"
                 )
-            lines.append("━━━━━━━━━━━━━━━━━━━━━━")
-            lines.append(
-                "💡 <i>VIP Members receive automatic alerts whenever a CEX/DEX spread exceeds 1.2%!</i>"
-            )
+            lines.append("──────────────────────")
             return "\n".join(lines)

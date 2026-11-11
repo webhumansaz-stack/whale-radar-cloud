@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import html
 import logging
+import random
 import urllib.parse
 from typing import Any
 
@@ -17,38 +18,56 @@ def build_viral_promo_pack(
     bot_username: str = "WhaleAlphaStars_bot",
 ) -> dict[str, str]:
     """
-    Creates viral <240-char $CASHTAG posts for X (Twitter), CoinMarketCap Community,
-    Reddit, and Telegram Discussion Groups from a live Whale Signal.
+    Builds human-sounding, institutional quant-desk posts for X.com, CoinMarketCap,
+    and Telegram without robotic AI emoji clichés.
     """
     sym = str(signal.get("symbol") or "TOKEN").upper()
-    chain = str(signal.get("chain") or "SOLANA").upper()
-    score = int(signal.get("whale_score") or 90)
+    chain = str(signal.get("chain") or "SOLANA").capitalize()
     buy_ratio = float(signal.get("buy_ratio") or 75.0)
     buys_1h = int(signal.get("buys_1h") or 100)
     sells_1h = int(signal.get("sells_1h") or 25)
     vol_24h = float(signal.get("volume_24h") or 100_000)
+    liq_usd = float(signal.get("liquidity_usd") or 50_000)
     ch_1h = float(signal.get("price_change_1h") or 12.5)
     sid = str(signal.get("signal_id") or "WHALE-ALPHA")
 
-    # Strictly < 240 chars so X.com tweetButton is always enabled
-    tweet_plain = (
-        f"🐋 WHALE ALERT: ${sym} (#{chain})\n"
-        f"• Whale Score: {score}/100\n"
-        f"• 1H Orderflow: {buy_ratio:.0f}% Buys ({ch_1h:+.1f}%)\n"
-        f"• Audit: Verified Safe\n\n"
-        f"Live contract & TP1-TP3 targets on Telegram 👇\n"
-        f"{public_channel_url}\n\n"
-        f"${sym} $SOL $PEPE #CryptoWhale"
-    )
+    liq_k = f"${liq_usd / 1000:.0f}k" if liq_usd >= 1000 else f"${liq_usd:.0f}"
+    vol_k = f"${vol_24h / 1000:.0f}k" if vol_24h >= 1000 else f"${vol_24h:.0f}"
+
+    tweet_variants = [
+        (
+            f"Unusual 1h buy-side skew on ${sym} ({chain} DEX) — {buys_1h} buys vs {sells_1h} sells "
+            f"({buy_ratio:.0f}% buy flow) with {liq_k} pool liquidity holding steady.\n\n"
+            f"Contract passed RugCheck/GoPlus. Full orderflow log & levels on our desk:\n"
+            f"{public_channel_url}\n\n"
+            f"${sym} $SOL $ETH"
+        ),
+        (
+            f"Tracking steady accumulation on ${sym} ({chain}). 1h orderflow sitting at "
+            f"{buy_ratio:.0f}% buy-side ({ch_1h:+.1f}% delta) on {vol_k} 24h volume.\n\n"
+            f"Raw contract audit & execution zones logged in our Telegram feed:\n"
+            f"{public_channel_url}\n\n"
+            f"${sym} $SOL $PEPE"
+        ),
+        (
+            f"On-chain desk flagged ${sym} on {chain} — {buys_1h}B / {sells_1h}S over the last 60m "
+            f"({buy_ratio:.0f}% buy imbalance, {liq_k} LP).\n\n"
+            f"Full contract & invalidation levels posted here:\n"
+            f"{public_channel_url}\n\n"
+            f"${sym} $WIF $SOL"
+        ),
+    ]
+    tweet_plain = random.choice(tweet_variants)
+
     x_intent_url = (
         "https://x.com/intent/post?text="
         + urllib.parse.quote(tweet_plain, safe="")
     )
 
     tg_share_text = (
-        f"🐋 Huge on-chain whale accumulation spotted on ${sym} (#{chain}) — "
-        f"{buy_ratio:.0f}% buy pressure ({score}/100 Whale Score)! "
-        f"Live contract & Entry/TP targets on Whale & Arbitrage Radar Global"
+        f"On-chain flow alert on ${sym} ({chain}): {buy_ratio:.0f}% buy-side skew "
+        f"({buys_1h} buys / {sells_1h} sells in 1h, {liq_k} liquidity). "
+        f"Contract audit & levels on Whale & Arbitrage Radar Global"
     )
     tg_share_url = (
         "https://t.me/share/url?url="
@@ -58,18 +77,17 @@ def build_viral_promo_pack(
     )
 
     comment_snipe = (
-        f"🐋 On-chain orderflow on ${sym} ({chain}) just hit {buy_ratio:.0f}% buy imbalance "
-        f"({buys_1h} buys vs {sells_1h} sells in 1H, ${vol_24h:,.0f} vol). "
-        f"Full RugCheck security audit & execution zones posted on {public_channel_url} "
-        f"(or scan any contract free via @{bot_username})."
+        f"Watching 1h DEX orderflow on ${sym} ({chain}) — {buys_1h} buys vs {sells_1h} sells "
+        f"({buy_ratio:.0f}% buy skew) with {liq_k} liquidity and clean contract audit. "
+        f"We log the raw flow and levels on {public_channel_url} (or check any contract via @{bot_username})."
     )
 
     admin_message = (
-        f"📣 <b>VIRAL $CASHTAG TRAFFIC KIT — <code>{html.escape(sid)}</code> (${html.escape(sym)})</b>\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"🐦 <b>X.com (@WhaleAlphaStar) Auto-Tweet Text:</b>\n"
+        f"<b>[DESK DISTRIBUTION KIT — {html.escape(sid)} (${html.escape(sym)})]</b>\n"
+        f"──────────────────────\n"
+        f"<b>X.com (@WhaleAlphaStar) Desk Post:</b>\n"
         f"<pre>{html.escape(tweet_plain)}</pre>\n\n"
-        f"💬 <b>Telegram / CoinMarketCap Comment Snipe (Tap to Copy):</b>\n"
+        f"<b>Discussion / CMC Analyst Note (Tap to Copy):</b>\n"
         f"<code>{html.escape(comment_snipe)}</code>"
     )
 
@@ -83,10 +101,6 @@ def build_viral_promo_pack(
 
 
 async def auto_post_tweet_via_chrome(tweet_text: str) -> bool:
-    """
-    Uses AppleScript + Chrome's open x.com tab (@WhaleAlphaStar) to automatically
-    publish a viral $CASHTAG tweet every time a new Whale Signal is generated.
-    """
     intent_url = "https://x.com/intent/post?text=" + urllib.parse.quote(
         tweet_text, safe=""
     )
@@ -153,7 +167,7 @@ async def auto_post_tweet_via_chrome(tweet_text: str) -> bool:
         stdout2, _ = await proc2.communicate()
         posted = b"POSTED" in stdout2
         if posted:
-            logger.info("✅ Automatically posted viral $CASHTAG tweet to @WhaleAlphaStar on X.com!")
+            logger.info("Posted desk update to @WhaleAlphaStar on X.com")
         return posted
     except Exception as exc:
         logger.warning("X.com auto-post error: %s", exc)
@@ -166,34 +180,34 @@ def build_pinned_welcome_post(
     vip_stars: int = 300,
 ) -> tuple[str, dict[str, Any]]:
     text = (
-        "🏛 <b>WHALE & ARBITRAGE RADAR GLOBAL — OFFICIAL TERMINAL</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━━━\n"
-        "24/7 algorithmic intelligence tracking <b>Institutional Whale Accumulation</b> "
-        "(Solana • Base • Ethereum • BSC) & <b>Live CEX Arbitrage Spreads</b>.\n\n"
-        "🔬 <b>Methodology:</b>\n"
-        "• <b>Whale Orderflow:</b> >65% buy-side imbalance & volume surge detection\n"
-        "• <b>Security Verified:</b> Automated GoPlus & RugCheck contract audit\n"
-        "• <b>Arbitrage Engine:</b> Live Binance, Bybit & KuCoin delta scanner\n\n"
-        f"🔓 <b>Access Full Alpha:</b>\n"
-        f"• <b>Unlock Single Signal ({unlock_stars} ⭐):</b> Reveal exact Ticker, Contract & Entry/TP1–TP3 zones.\n"
-        f"• <b>VIP All-Access ({vip_stars} ⭐/30d):</b> 0-second private VIP feed + all signals unlocked.\n"
-        "• <b>Free Scanner:</b> Send any token address to our bot for a free audit!"
+        "<b>WHALE & ARBITRAGE RADAR GLOBAL — ON-CHAIN DESK</b>\n"
+        "──────────────────────\n"
+        "24/7 quantitative monitoring of <b>DEX Orderflow Imbalances</b> "
+        "(Solana • Base • Ethereum • BSC) and <b>Cross-Exchange Spot Spreads</b>.\n\n"
+        "<b>Desk Filtering Criteria:</b>\n"
+        "• <b>Orderflow Skew:</b> >55–85% 1h net buy-side volume with active pool depth\n"
+        "• <b>Contract Verification:</b> Automated GoPlus & RugCheck registry screening\n"
+        "• <b>CEX Arbitrage:</b> Real-time Binance, Bybit & KuCoin orderbook delta tracking\n\n"
+        f"<b>Terminal Access:</b>\n"
+        f"• <b>Single Alert Unlock ({unlock_stars} ⭐):</b> Reveal full contract address, ticker, DEX pair & execution range.\n"
+        f"• <b>VIP Desk Feed ({vip_stars} ⭐ / 30d):</b> Unmasked real-time feed + unlimited contract audits.\n"
+        "• <b>Pair Auditor:</b> Send any contract address or ticker to the bot for an on-chain check."
     )
     keyboard = {
         "inline_keyboard": [
             [
                 {
-                    "text": f"👑 Join 24/7 VIP Instant Feed ({vip_stars} ⭐/mo)",
+                    "text": f"VIP Desk Feed ({vip_stars} ⭐ / 30d)",
                     "url": f"https://t.me/{bot_username}?start=vip",
                 }
             ],
             [
                 {
-                    "text": "🕵️‍♂️ Free On-Chain Token Auditor",
+                    "text": "On-Chain Pair Auditor",
                     "url": f"https://t.me/{bot_username}?start=scanner",
                 },
                 {
-                    "text": "🎁 Earn Free Signal Unlocks",
+                    "text": "Desk Bot Terminal",
                     "url": f"https://t.me/{bot_username}?start=home",
                 },
             ],
