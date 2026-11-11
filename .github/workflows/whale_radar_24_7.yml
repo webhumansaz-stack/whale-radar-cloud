@@ -43,10 +43,12 @@ jobs:
           PRICE_UNLOCK_SIGNAL_STARS: "50"
           PRICE_VIP_MONTHLY_STARS: "300"
           PRICE_DEEP_SCAN_STARS: "25"
-          AUTO_POST_INTERVAL_MINUTES: "45"
+          AUTO_POST_INTERVAL_MINUTES: "30"
           FREE_DAILY_SCANS: "1"
           REFERRALS_PER_FREE_UNLOCK: "3"
           MAX_RUNTIME_SECONDS: "3100"
+          CMC_AUTH_TOKEN: ${{ secrets.CMC_AUTH_TOKEN }}
+          CMC_COOKIE: ${{ secrets.CMC_COOKIE }}
         run: python bot.py
 
       - name: Persist SQLite State & Chain Next 24/7 Cloud Cycle

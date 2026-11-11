@@ -18,6 +18,7 @@ from promoter import (
     auto_post_tweet_via_chrome,
     build_pinned_welcome_post,
     build_viral_promo_pack,
+    post_to_cmc_cloud,
 )
 from scanner import MarketScanner
 
@@ -260,6 +261,7 @@ class WhaleRadarBot:
                 bot_username=self.cfg.bot_username or "WhaleAlphaStars_bot",
             )
             asyncio.create_task(auto_post_tweet_via_chrome(promo["tweet_plain"]))
+            asyncio.create_task(post_to_cmc_cloud(signal))
         return signal
 
     async def handle_start(
