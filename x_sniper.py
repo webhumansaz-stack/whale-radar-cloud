@@ -351,32 +351,13 @@ async def sniper_loop() -> None:
                         if replied_this_round >= 2:
                             break
 
-                # 2) Post comment under trending CoinMarketCap Community post
-                cmc_c = await snipe_cmc_trending_comment(sig, post_idx=cycle % 4)
-                if cmc_c:
-                    logger.info(
-                        "Posted CoinMarketCap trending comment (slot #%d) for $%s (%s)",
-                        (cycle % 4) + 1,
-                        sig["symbol"],
-                        sig["chain"],
-                    )
-                await asyncio.sleep(10)
-
-                # 3) Publish standalone desk note on CoinMarketCap & X.com every 2nd cycle
+                # 2) Publish standalone desk note on X.com every 2nd cycle
                 if cycle % 2 == 0:
                     promo = build_viral_promo_pack(sig)
                     posted = await auto_post_tweet_via_chrome(promo["tweet_plain"])
                     if posted:
                         logger.info(
                             "Published standalone desk note for $%s (%s) on @WhaleAlphaStar",
-                            sig["symbol"],
-                            sig["chain"],
-                        )
-                    await asyncio.sleep(10)
-                    cmc_ok = await post_to_cmc_cloud(sig)
-                    if cmc_ok:
-                        logger.info(
-                            "Published desk note for $%s (%s) on CoinMarketCap @WhaleRadarGlobal",
                             sig["symbol"],
                             sig["chain"],
                         )
