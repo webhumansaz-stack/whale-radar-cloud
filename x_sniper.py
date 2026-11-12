@@ -385,7 +385,7 @@ async def sniper_loop() -> None:
         except Exception as exc:
             logger.warning("Sniper cycle error: %s", exc)
 
-        await asyncio.sleep(240)
+        await asyncio.sleep(random.randint(60, 85))
 
 
 if __name__ == "__main__":
