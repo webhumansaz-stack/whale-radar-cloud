@@ -160,22 +160,22 @@ def build_reply_text(sig: dict[str, Any], template_idx: int) -> str:
         (
             f"Looking strictly at 1h DEX orderflow rather than narratives, ${sym} ({chain}) "
             f"is printing {buys_1h} buys vs {sells_1h} sells ({buy_ratio:.0f}% buy skew) with {liq_k} liquidity.\n\n"
-            f"We log raw contract audits & levels on Telegram: {CHANNEL_HANDLE}"
+            f"We log raw contract audits & levels on Telegram: t.me/WhaleRadarGlobal"
         ),
         (
             f"Watching ${sym} on {chain} right now — {buy_ratio:.0f}% 1h buy-side flow "
             f"({ch_1h:+.1f}% delta) and clean RugCheck/GoPlus audit ({liq_k} LP).\n\n"
-            f"Live orderflow feed on Telegram: {CHANNEL_HANDLE}"
+            f"Live orderflow feed on Telegram: t.me/WhaleRadarGlobal"
         ),
         (
             f"Most low-caps fail on LP depth or mint authority. ${sym} ({chain}) is one of the few "
             f"showing {buys_1h}B/{sells_1h}S in the last hour with verified liquidity.\n\n"
-            f"Full on-chain desk on Telegram: {CHANNEL_HANDLE}"
+            f"Full on-chain desk on Telegram: t.me/WhaleRadarGlobal"
         ),
         (
             f"If you're tracking real-time buy imbalance, ${sym} on {chain} just hit "
             f"{buy_ratio:.0f}% buy-side volume over the past 60m ({liq_k} pool depth).\n\n"
-            f"Live Telegram scanner: {BOT_HANDLE} | Feed: {CHANNEL_HANDLE}"
+            f"Live Telegram feed: t.me/WhaleRadarGlobal | Free Scanner: t.me/WhaleAlphaStars_bot"
         ),
     ]
     return templates[template_idx % len(templates)]
@@ -228,9 +228,10 @@ async def snipe_cmc_trending_comment(sig: dict[str, Any], post_idx: int = 0) -> 
     comment_text = (
         f"On-chain DEX orderflow also showing {buy_ratio:.0f}% 1H buy-side skew on ${sym} ({chain}) — "
         f"{buys_1h} buys vs {sells_1h} sells across {liq_k} verified LP depth. "
-        f"We log live whale orderflow & CEX arbitrage spreads 24/7 on Telegram: {CHANNEL_HANDLE} (Scanner: {BOT_HANDLE})"
+        f"We log live whale orderflow & CEX arbitrage spreads 24/7 on Telegram: {CHANNEL_HANDLE} (Free Scanner: {BOT_HANDLE})"
     )
     safe_comment = comment_text.replace("\\", "\\\\").replace('"', '\\"')
+    use_latest_tab = (post_idx % 2 == 1)
 
     script = f"""
     tell application "Google Chrome"
@@ -240,11 +241,24 @@ async def snipe_cmc_trending_comment(sig: dict[str, Any], post_idx: int = 0) -> 
                 if u contains "coinmarketcap.com" then
                     set URL of tab t of window w to "https://coinmarketcap.com/community/"
                     delay 5
+                    if {"true" if use_latest_tab else "false"} then
+                        execute tab t of window w javascript "
+                        (function() {{
+                          const tabs = Array.from(document.querySelectorAll('span, div, button, a'));
+                          const latestBtn = tabs.find(el => el.innerText && el.innerText.trim() === 'Latest');
+                          if (latestBtn) latestBtn.click();
+                        }})()
+                        "
+                        delay 2.5
+                    end if
                     execute tab t of window w javascript "
                     (function() {{
                       const posts = Array.from(document.querySelectorAll('section.g-post-row, [class*=SocialPostWrapper]'));
                       const target = posts[{post_idx % 4}] || posts[0];
-                      const cBtn = target ? target.querySelector('[class*=CommentWrapper]') : null;
+                      if (!target) return;
+                      const likeBtn = target.querySelector('[class*=LikeWrapper], [data-test*=like]');
+                      if (likeBtn) likeBtn.click();
+                      const cBtn = target.querySelector('[class*=CommentWrapper]');
                       if (cBtn) cBtn.click();
                     }})()
                     "

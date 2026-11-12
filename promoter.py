@@ -39,19 +39,19 @@ def build_viral_promo_pack(
         (
             f"Unusual 1h buy-side skew on ${sym} ({chain} DEX) — {buys_1h} buys vs {sells_1h} sells "
             f"({buy_ratio:.0f}% buy flow) with {liq_k} pool liquidity holding steady.\n\n"
-            f"Contract passed RugCheck/GoPlus. Full orderflow log on Telegram: {DEFAULT_PUBLIC_CHANNEL_HANDLE}\n\n"
+            f"Contract passed RugCheck/GoPlus. Full orderflow log on Telegram: t.me/WhaleRadarGlobal\n\n"
             f"${sym} $SOL $ETH"
         ),
         (
             f"Tracking steady accumulation on ${sym} ({chain}). 1h orderflow sitting at "
             f"{buy_ratio:.0f}% buy-side ({ch_1h:+.1f}% delta) on {vol_k} 24h volume.\n\n"
-            f"Raw contract audit & execution zones on Telegram: {DEFAULT_PUBLIC_CHANNEL_HANDLE}\n\n"
+            f"Raw contract audit & execution zones on Telegram: t.me/WhaleRadarGlobal\n\n"
             f"${sym} $SOL $PEPE"
         ),
         (
             f"On-chain desk flagged ${sym} on {chain} — {buys_1h}B / {sells_1h}S over the last 60m "
             f"({buy_ratio:.0f}% buy imbalance, {liq_k} LP).\n\n"
-            f"Live feed on Telegram: {DEFAULT_PUBLIC_CHANNEL_HANDLE} (Scanner: @{bot_username})\n\n"
+            f"Live feed on Telegram: t.me/WhaleRadarGlobal (Scanner: t.me/{bot_username})\n\n"
             f"${sym} $WIF $SOL"
         ),
     ]
