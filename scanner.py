@@ -146,8 +146,8 @@ class MarketScanner:
                 ):
                     candidate_pairs.extend(dex_data["pairs"])
 
-            for query in ("SOL", "BASE", "PEPE", "AI", "ETH", "USDT"):
-                if len(candidate_pairs) >= 60:
+            for query in ("SOL", "BASE", "PEPE", "VIRTUAL", "AI", "BONK", "WIF", "SUI", "ARB", "AAVE"):
+                if len(candidate_pairs) >= 90:
                     break
                 search_res = await self._get_json(
                     session,
@@ -158,9 +158,9 @@ class MarketScanner:
                 ):
                     candidate_pairs.extend(search_res["pairs"][:15])
 
-            best_pair: Optional[dict[str, Any]] = None
-            best_score: int = -1
+            scored_candidates: list[tuple[int, dict[str, Any]]] = []
             seen_tokens: set[str] = set()
+            now_ms = int(time.time() * 1000)
 
             for pair in candidate_pairs:
                 base_token = pair.get("baseToken") or {}
@@ -195,49 +195,79 @@ class MarketScanner:
                 if exclude_checker and exclude_checker(token_addr):
                     continue
 
+                # Reject brand-new (<3 hours old) Pump.fun / rug-prone pools
+                created_at_ms = int(pair.get("pairCreatedAt") or 0)
+                if created_at_ms > 0 and (now_ms - created_at_ms) < (3 * 3600 * 1000):
+                    continue
+
                 liq = float((pair.get("liquidity") or {}).get("usd") or 0)
                 vol_dict = pair.get("volume") or {}
                 vol_24h = float(vol_dict.get("h24") or 0)
                 vol_1h = float(vol_dict.get("h1") or 0)
+                fdv = float(pair.get("fdv") or pair.get("marketCap") or 0)
 
-                if liq < 28_000 or vol_24h < 50_000:
+                if liq < 55_000 or vol_24h < 75_000 or fdv < 120_000:
                     continue
 
                 txns_1h = (pair.get("txns") or {}).get("h1") or {}
                 buys_1h = int(txns_1h.get("buys") or 0)
                 sells_1h = int(txns_1h.get("sells") or 0)
                 total_tx_1h = buys_1h + sells_1h
-                if total_tx_1h < 25:
+                if total_tx_1h < 30:
                     continue
 
                 buy_ratio = (buys_1h / total_tx_1h) * 100.0
-                if buy_ratio < 54.0:
+                if buy_ratio < 55.0:
                     continue
 
                 pc = pair.get("priceChange") or {}
                 ch_1h = float(pc.get("h1") or 0)
+                ch_24h = float(pc.get("h24") or 0)
 
-                vol_liq_ratio = min(3.0, vol_1h / max(liq, 1.0))
+                # Reject tokens already at blow-off scam tops (+250%+) or crashing (-35%)
+                if ch_24h > 240.0 or ch_24h < -30.0 or ch_1h < -5.0 or ch_1h > 85.0:
+                    continue
+
+                vol_liq_ratio = min(2.5, vol_1h / max(liq, 1.0))
                 imbalance_pts = min(30.0, max(0.0, (buy_ratio - 50.0) * 1.1))
-                momentum_pts = min(25.0, max(0.0, ch_1h * 0.6))
-                activity_pts = min(20.0, total_tx_1h / 25.0)
+                momentum_pts = min(22.0, max(0.0, ch_1h * 0.7))
+                activity_pts = min(18.0, total_tx_1h / 30.0)
+                depth_pts = min(10.0, liq / 50_000.0)
                 score = int(
                     min(
                         98,
                         max(
-                            64,
+                            68,
                             45
                             + imbalance_pts
                             + momentum_pts
                             + activity_pts
-                            + (vol_liq_ratio * 8),
+                            + depth_pts
+                            + (vol_liq_ratio * 6),
                         ),
                     )
                 )
+                scored_candidates.append((score, pair))
 
-                if score > best_score:
-                    best_score = score
-                    best_pair = pair
+            scored_candidates.sort(key=lambda x: x[0], reverse=True)
+            best_pair: Optional[dict[str, Any]] = None
+            best_score: int = -1
+            security_summary = "Verified active DEX liquidity pool"
+
+            for cand_score, cand_pair in scored_candidates[:6]:
+                c_base = cand_pair.get("baseToken") or {}
+                c_addr = str(c_base.get("address") or "")
+                c_chain = str(cand_pair.get("chainId") or "SOLANA").upper()
+                sec = await self.check_token_security(session, c_chain, c_addr)
+                if "HIGH RISK" in sec or "Note:" in sec:
+                    continue
+                best_pair = cand_pair
+                best_score = cand_score
+                security_summary = sec
+                break
+
+            if not best_pair and scored_candidates:
+                best_score, best_pair = scored_candidates[0]
 
             if not best_pair:
                 return None

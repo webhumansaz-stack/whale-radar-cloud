@@ -1130,42 +1130,96 @@ class WhaleRadarBot:
                 )
             return
 
+        chat_type = str((msg.get("chat") or {}).get("type") or "private")
+
         if text.startswith("/vip"):
             await self.send_vip_offer(chat_id, user_id)
             return
 
-        # Otherwise treat text as a token ticker or contract address scan request!
-        if len(text) > 64 or " " in text:
+        if text.startswith("/arb"):
+            report = await self.scanner.scan_cex_arbitrage()
             await self.send_message(
                 chat_id,
-                "💡 Send a single <b>Token Symbol</b> (e.g. <code>PEPE</code>, <code>SOL</code>) or a <b>Contract Address</b> to run an On-Chain Whale & Security Audit.",
-                reply_markup=self.main_menu_keyboard(user_id),
+                report,
+                reply_markup={
+                    "inline_keyboard": [
+                        [{"text": "🐋 Join @WhaleRadarGlobal (24/7 Feed)", "url": "https://t.me/WhaleRadarGlobal"}],
+                        [{"text": "🎁 Claim 1 Free VIP Signal Unlock", "url": "https://t.me/WhaleAlphaStars_bot?start=welcome_gift"}],
+                    ]
+                },
             )
             return
 
-        can_free = self.db.check_and_consume_free_scan(
-            user_id, self.cfg.free_daily_scans
-        )
-        if not can_free:
-            user = self.db.get_user(user_id) or {}
-            credits = int(user.get("credits") or 0)
-            if credits > 0:
-                self.db.add_credits(user_id, -1)
+        # Group Chat Viral Mode: in groups/supergroups, only respond to explicit /scan, /audit, /whale or @bot mentions
+        if chat_type in ("group", "supergroup"):
+            lower_text = text.lower()
+            if lower_text.startswith(("/scan", "/audit", "/whale")):
+                parts = text.split(maxsplit=1)
+                if len(parts) < 2:
+                    await self.send_message(
+                        chat_id,
+                        "🔎 <b>Usage:</b> <code>/scan PEPE</code> or <code>/scan &lt;contract_address&gt;</code>",
+                        reply_markup={
+                            "inline_keyboard": [
+                                [{"text": "🐋 Join @WhaleRadarGlobal", "url": "https://t.me/WhaleRadarGlobal"}]
+                            ]
+                        },
+                    )
+                    return
+                text = parts[1].strip()
+            elif f"@{(self.cfg.bot_username or 'WhaleAlphaStars_bot').lower()}" in lower_text:
+                text = (
+                    text.replace(f"@{self.cfg.bot_username}", "")
+                    .replace("@WhaleAlphaStars_bot", "")
+                    .strip()
+                )
             else:
+                return
+        elif text.lower().startswith(("/scan", "/audit")):
+            parts = text.split(maxsplit=1)
+            if len(parts) < 2:
                 await self.send_message(
                     chat_id,
-                    f"🔒 <b>Daily Free Scan Limit Reached ({self.cfg.free_daily_scans}/{self.cfg.free_daily_scans})</b>\n\n"
-                    f"Unlock <b>5x Deep Scans & Signal Credits ({self.cfg.price_deep_scan_stars} ⭐)</b> or upgrade to <b>Unlimited VIP ({self.cfg.price_vip_monthly_stars} ⭐/mo)</b>:",
-                )
-                await self.send_stars_invoice(
-                    chat_id=chat_id,
-                    title="5x Whale Unlock & Audit Credits",
-                    description="Run 5 on-demand Token Security & Whale Orderflow Audits or Signal Unlocks.",
-                    payload_str="scan_pack:5",
-                    stars_amount=self.cfg.price_deep_scan_stars,
-                    button_label="Unlock 5 Credits",
+                    "💡 Send a single <b>Token Symbol</b> (e.g. <code>PEPE</code>, <code>SOL</code>) or a <b>Contract Address</b> to run an On-Chain Whale & Security Audit.",
+                    reply_markup=self.main_menu_keyboard(user_id),
                 )
                 return
+            text = parts[1].strip()
+
+        # Otherwise treat text as a token ticker or contract address scan request!
+        if len(text) > 64 or " " in text or not text:
+            if chat_type == "private":
+                await self.send_message(
+                    chat_id,
+                    "💡 Send a single <b>Token Symbol</b> (e.g. <code>PEPE</code>, <code>SOL</code>) or a <b>Contract Address</b> to run an On-Chain Whale & Security Audit.",
+                    reply_markup=self.main_menu_keyboard(user_id),
+                )
+            return
+
+        if chat_type == "private":
+            can_free = self.db.check_and_consume_free_scan(
+                user_id, self.cfg.free_daily_scans
+            )
+            if not can_free:
+                user = self.db.get_user(user_id) or {}
+                credits = int(user.get("credits") or 0)
+                if credits > 0:
+                    self.db.add_credits(user_id, -1)
+                else:
+                    await self.send_message(
+                        chat_id,
+                        f"🔒 <b>Daily Free Scan Limit Reached ({self.cfg.free_daily_scans}/{self.cfg.free_daily_scans})</b>\n\n"
+                        f"Unlock <b>5x Deep Scans & Signal Credits ({self.cfg.price_deep_scan_stars} ⭐)</b> or upgrade to <b>Unlimited VIP ({self.cfg.price_vip_monthly_stars} ⭐/mo)</b>:",
+                    )
+                    await self.send_stars_invoice(
+                        chat_id=chat_id,
+                        title="5x Whale Unlock & Audit Credits",
+                        description="Run 5 on-demand Token Security & Whale Orderflow Audits or Signal Unlocks.",
+                        payload_str="scan_pack:5",
+                        stars_amount=self.cfg.price_deep_scan_stars,
+                        button_label="Unlock 5 Credits",
+                    )
+                    return
 
         await self.send_message(
             chat_id,
@@ -1176,15 +1230,86 @@ class WhaleRadarBot:
             await self.send_message(
                 chat_id,
                 f"⚠️ No active DEX liquidity pool found for <code>{html.escape(text)}</code>.",
-                reply_markup=self.main_menu_keyboard(user_id),
+                reply_markup=self.main_menu_keyboard(user_id) if chat_type == "private" else None,
             )
             return
 
+        group_kb = {
+            "inline_keyboard": [
+                [{"text": "🐋 Join @WhaleRadarGlobal (24/7 Whale Feed)", "url": "https://t.me/WhaleRadarGlobal"}],
+                [{"text": "🎁 Claim 1 Free VIP Signal Unlock", "url": "https://t.me/WhaleAlphaStars_bot?start=welcome_gift"}],
+            ]
+        }
         await self.send_message(
             chat_id,
             res["report"],
-            reply_markup=self.main_menu_keyboard(user_id),
+            reply_markup=self.main_menu_keyboard(user_id) if chat_type == "private" else group_kb,
         )
+
+    async def check_and_broadcast_winner_recap(self) -> bool:
+        """
+        Checks recent signals in SQLite against live DexScreener prices.
+        When a signal gains +10% or more since our entry alert, broadcasts a verified
+        On-Chain Performance Recap to the public channel to drive VIP conversions.
+        """
+        if not self.cfg.public_channel_id:
+            return False
+        if not hasattr(self, "_announced_winners"):
+            self._announced_winners: set[str] = set()
+
+        signals = self.db.get_recent_signals(limit=20)
+        session = await self._get_session()
+        for s in signals:
+            sid = s["signal_id"]
+            if sid in self._announced_winners:
+                continue
+            addr = s.get("token_address") or ""
+            try:
+                entry = float(s.get("price_usd") or 0)
+            except Exception:
+                continue
+            if not addr or entry <= 0:
+                continue
+            try:
+                url = f"https://api.dexscreener.com/latest/dex/tokens/{addr}"
+                async with session.get(url, timeout=10) as resp:
+                    if resp.status != 200:
+                        continue
+                    data = await resp.json()
+                pairs = data.get("pairs") or []
+                if not pairs:
+                    continue
+                cur = float(pairs[0].get("priceUsd") or 0)
+                if cur <= 0:
+                    continue
+                gain_pct = ((cur - entry) / entry) * 100.0
+                if gain_pct >= 10.0:
+                    self._announced_winners.add(sid)
+                    sym = html.escape(str(s.get("symbol") or "TOKEN"))
+                    chain = html.escape(str(s.get("chain") or "SOLANA"))
+                    dex_url = str(s.get("dex_url") or f"https://dexscreener.com/{chain.lower()}/{addr}")
+                    recap_text = (
+                        f"🎯 <b>[VERIFIED DESK PERFORMANCE] +<code>{gain_pct:.1f}%</code> GAIN</b>\n"
+                        f"Ref: <code>{sid}</code> ({chain})\n"
+                        f"──────────────────────\n"
+                        f"• <b>Asset Revealed:</b> <b>${sym}</b> (<code>{html.escape(addr)}</code>)\n"
+                        f"• <b>Radar Entry Price:</b> <code>${entry:.6g}</code>\n"
+                        f"• <b>Current DEX Price:</b> <code>${cur:.6g}</code> (<b>+{gain_pct:.1f}%</b>)\n"
+                        f"• <b>Verification:</b> <a href=\"{html.escape(dex_url)}\">Live DexScreener Chart</a>\n"
+                        f"──────────────────────\n"
+                        f"<i>VIP members received the unmasked contract & entry levels at 0-second latency. Unlock our latest live signal or join VIP below:</i>"
+                    )
+                    kb = {
+                        "inline_keyboard": [
+                            [{"text": "🎁 Claim 1 Free Signal Unlock Credit", "url": "https://t.me/WhaleAlphaStars_bot?start=welcome_gift"}],
+                            [{"text": f"👑 Join 24/7 VIP Instant Feed ({self.cfg.price_vip_monthly_stars} ⭐/mo)", "url": "https://t.me/WhaleAlphaStars_bot?start=vip"}],
+                        ]
+                    }
+                    await self.send_message(self.cfg.public_channel_id, recap_text, reply_markup=kb)
+                    return True
+            except Exception:
+                continue
+        return False
 
     async def auto_poster_loop(self) -> None:
         interval_sec = max(300, self.cfg.auto_post_interval_minutes * 60)
@@ -1208,6 +1333,7 @@ class WhaleRadarBot:
         while True:
             try:
                 if self.cfg.public_channel_id or self.cfg.vip_channel_id:
+                    await self.check_and_broadcast_winner_recap()
                     sig = await self.generate_and_publish_signal(post_to_channels=True)
                     if sig:
                         logger.info(
