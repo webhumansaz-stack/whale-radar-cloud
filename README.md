@@ -1,6 +1,6 @@
 # 🐋 On-Chain Whale Orderflow & CEX Arbitrage Desk (`whale-radar-cloud`)
 
-[![Live Telegram Feed](https://img.shields.io/badge/Telegram_Desk-Live_Orderflow_Feed-0088cc?style=for-the-badge&logo=telegram)](https://t.me/+m1YDX3OTmC8yNTgy)
+[![Live Telegram Feed](https://img.shields.io/badge/Telegram_Desk-@WhaleRadarGlobal-0088cc?style=for-the-badge&logo=telegram)](https://t.me/WhaleRadarGlobal)
 [![Telegram Bot Terminal](https://img.shields.io/badge/Bot_Terminal-@WhaleAlphaStars__bot-2CA5E0?style=for-the-badge&logo=telegram)](https://t.me/WhaleAlphaStars_bot)
 [![24/7 Cloud Engine](https://img.shields.io/badge/Cloud_Execution-24%2F7_Active-10b981?style=for-the-badge&logo=githubactions)](https://github.com/webhumansaz-stack/whale-radar-cloud/actions)
 [![Chains](https://img.shields.io/badge/Coverage-Solana_%7C_Ethereum_%7C_Base_%7C_BSC-6366f1?style=for-the-badge)](#architecture--methodology)
@@ -14,11 +14,11 @@ Built for quantitative traders, liquidity providers, and active on-chain partici
 ## 🔗 Live Access & Real-Time Feeds
 
 * **📡 Public Orderflow Channel (Free Delay Feed & Market Recaps):**  
-  👉 **[Join Whale & Arbitrage Radar Global (`t.me/+m1YDX3OTmC8yNTgy`)](https://t.me/+m1YDX3OTmC8yNTgy)**
+  👉 **[Join `@WhaleRadarGlobal` (`t.me/WhaleRadarGlobal`)](https://t.me/WhaleRadarGlobal)**
 * **⚡ Interactive Bot Terminal (Instant Contract Audits, CA Unlocks & VIP Pass):**  
   👉 **[Launch `@WhaleAlphaStars_bot` (`t.me/WhaleAlphaStars_bot`)](https://t.me/WhaleAlphaStars_bot)**
-* **📊 X (Twitter) Desk Notes:**  
-  👉 **[`@WhaleAlphaStar`](https://x.com/WhaleAlphaStar)**
+* **📊 X (Twitter) & CoinMarketCap Desk Notes:**  
+  👉 **[`@WhaleAlphaStar` (X)](https://x.com/WhaleAlphaStar)** · **[`@WhaleRadarGlobal` (CMC)](https://coinmarketcap.com/community/profile/WhaleRadarGlobal/)**
 
 ---
 

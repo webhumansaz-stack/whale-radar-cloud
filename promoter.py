@@ -9,7 +9,8 @@ from typing import Any
 
 logger = logging.getLogger("WhalePromoter")
 
-DEFAULT_PUBLIC_CHANNEL_URL = "https://t.me/+m1YDX3OTmC8yNTgy"
+DEFAULT_PUBLIC_CHANNEL_URL = "https://t.me/WhaleRadarGlobal"
+DEFAULT_PUBLIC_CHANNEL_HANDLE = "@WhaleRadarGlobal"
 
 
 def build_viral_promo_pack(
@@ -19,7 +20,7 @@ def build_viral_promo_pack(
 ) -> dict[str, str]:
     """
     Builds human-sounding, institutional quant-desk posts for X.com, CoinMarketCap,
-    and Telegram without robotic AI emoji clichés.
+    and Telegram without robotic AI emoji clichés or spam-filtered raw URLs.
     """
     sym = str(signal.get("symbol") or "TOKEN").upper()
     chain = str(signal.get("chain") or "SOLANA").capitalize()
@@ -38,22 +39,19 @@ def build_viral_promo_pack(
         (
             f"Unusual 1h buy-side skew on ${sym} ({chain} DEX) — {buys_1h} buys vs {sells_1h} sells "
             f"({buy_ratio:.0f}% buy flow) with {liq_k} pool liquidity holding steady.\n\n"
-            f"Contract passed RugCheck/GoPlus. Full orderflow log & levels on our desk:\n"
-            f"{public_channel_url}\n\n"
+            f"Contract passed RugCheck/GoPlus. Full orderflow log on Telegram: {DEFAULT_PUBLIC_CHANNEL_HANDLE}\n\n"
             f"${sym} $SOL $ETH"
         ),
         (
             f"Tracking steady accumulation on ${sym} ({chain}). 1h orderflow sitting at "
             f"{buy_ratio:.0f}% buy-side ({ch_1h:+.1f}% delta) on {vol_k} 24h volume.\n\n"
-            f"Raw contract audit & execution zones logged in our Telegram feed:\n"
-            f"{public_channel_url}\n\n"
+            f"Raw contract audit & execution zones on Telegram: {DEFAULT_PUBLIC_CHANNEL_HANDLE}\n\n"
             f"${sym} $SOL $PEPE"
         ),
         (
             f"On-chain desk flagged ${sym} on {chain} — {buys_1h}B / {sells_1h}S over the last 60m "
             f"({buy_ratio:.0f}% buy imbalance, {liq_k} LP).\n\n"
-            f"Full contract & invalidation levels posted here:\n"
-            f"{public_channel_url}\n\n"
+            f"Live feed on Telegram: {DEFAULT_PUBLIC_CHANNEL_HANDLE} (Scanner: @{bot_username})\n\n"
             f"${sym} $WIF $SOL"
         ),
     ]
@@ -67,7 +65,7 @@ def build_viral_promo_pack(
     tg_share_text = (
         f"On-chain flow alert on ${sym} ({chain}): {buy_ratio:.0f}% buy-side skew "
         f"({buys_1h} buys / {sells_1h} sells in 1h, {liq_k} liquidity). "
-        f"Contract audit & levels on Whale & Arbitrage Radar Global"
+        f"Contract audit & levels on {DEFAULT_PUBLIC_CHANNEL_HANDLE}"
     )
     tg_share_url = (
         "https://t.me/share/url?url="
@@ -79,7 +77,7 @@ def build_viral_promo_pack(
     comment_snipe = (
         f"Watching 1h DEX orderflow on ${sym} ({chain}) — {buys_1h} buys vs {sells_1h} sells "
         f"({buy_ratio:.0f}% buy skew) with {liq_k} liquidity and clean contract audit. "
-        f"We log the raw flow and levels on {public_channel_url} (or check any contract via @{bot_username})."
+        f"We log raw flow & levels on Telegram: {DEFAULT_PUBLIC_CHANNEL_HANDLE} (or check any CA via @{bot_username})."
     )
 
     admin_message = (
@@ -241,24 +239,25 @@ async def post_to_cmc_cloud(
         (
             f" On-Chain Orderflow Desk — Tracking unusual 1H buy-side skew on ${sym} ({chain.capitalize()} DEX): "
             f"{buys_1h} buys vs {sells_1h} sells ({buy_ratio:.0f}% buy flow, {ch_1h:+.1f}% 1H delta) across {liq_k} pool depth. "
-            f"Contract passed RugCheck/GoPlus verification. Live orderflow feed & levels on Telegram: {public_channel_url}"
+            f"Contract passed RugCheck/GoPlus verification. Live orderflow feed on Telegram: {DEFAULT_PUBLIC_CHANNEL_HANDLE} | Bot: @WhaleAlphaStars_bot"
         ),
         (
             f" Spot & DEX Flow Update — Sustained whale accumulation flagged on ${sym} ({chain.capitalize()}) with "
             f"{buy_ratio:.0f}% 1H buy-side dominance ({buys_1h}B / {sells_1h}S) on {vol_k} 24H volume and {liq_k} locked LP. "
-            f"Full contract audit & execution zones posted on our Telegram desk: {public_channel_url}"
+            f"Full contract audit & execution zones on Telegram: {DEFAULT_PUBLIC_CHANNEL_HANDLE}"
         ),
         (
             f" Quantitative Liquidity Alert — ${sym} ({chain.capitalize()}) showing {buy_ratio:.0f}% net buy-side imbalance "
             f"over the last 60m ({buys_1h} buys / {sells_1h} sells, {liq_k} liquidity) with zero mint/freeze risk flags. "
-            f"Real-time whale radar & CEX arbitrage spreads on Telegram: {public_channel_url}"
+            f"Real-time whale radar & CEX arbitrage spreads on Telegram: {DEFAULT_PUBLIC_CHANNEL_HANDLE}"
         ),
     ]
     body_text = random.choice(note_templates)
+    full_post_text = anchor_tag + body_text
 
     payload = {
         "bullish": True,
-        "content": anchor_tag + body_text,
+        "content": full_post_text,
         "originalContent": json.dumps(
             [
                 [
@@ -279,7 +278,7 @@ async def post_to_cmc_cloud(
         "mentions": [],
         "links": [],
         "topics": [],
-        "linkCardVisible": True,
+        "linkCardVisible": False,
         "images": [],
         "newImages": [],
         "setAsAnnouncement": False,
@@ -321,11 +320,92 @@ async def post_to_cmc_cloud(
                         anchor_tag,
                         sym,
                     )
-                else:
-                    logger.warning("CoinMarketCap cloud post response: %s", data)
-                return ok
+                    return True
+                logger.warning("CoinMarketCap cloud post response: %s", data)
     except Exception as exc:
         logger.warning("CoinMarketCap cloud post error: %s", exc)
+
+    return await auto_post_cmc_via_chrome(full_post_text)
+
+
+async def auto_post_cmc_via_chrome(post_text: str) -> bool:
+    """
+    Fallback/Residential publisher that posts directly via Google Chrome Tab on
+    coinmarketcap.com/community/ using the active residential session.
+    """
+    safe_text = post_text.replace("\\", "\\\\").replace('"', '\\"').replace("\n", " ")
+    script = f"""
+    tell application "Google Chrome"
+        repeat with w from 1 to count of windows
+            repeat with t from 1 to count of tabs of window w
+                set u to URL of tab t of window w
+                if u contains "coinmarketcap.com" then
+                    set URL of tab t of window w to "https://coinmarketcap.com/community/"
+                    delay 5
+                    execute tab t of window w javascript "
+                    (function() {{
+                      const newPostBtn = Array.from(document.querySelectorAll('button')).find(b => b.innerText.trim() === 'New Post');
+                      if (newPostBtn) newPostBtn.click();
+                    }})()
+                    "
+                    delay 2
+                    execute tab t of window w javascript "
+                    (function() {{
+                      const s = document.createElement('script');
+                      s.textContent = `
+                        (async function() {{
+                          const ed = document.querySelector('[data-slate-editor=true]');
+                          if (!ed) return;
+                          const fk = Object.keys(ed).find(k => k.startsWith('__reactFiber'));
+                          let f = ed[fk], editor = null;
+                          for (let i = 0; i < 30 && f; i++) {{
+                            if (f.memoizedProps && f.memoizedProps.editor) {{ editor = f.memoizedProps.editor; break; }}
+                            f = f.return;
+                          }}
+                          if (editor) {{
+                            editor.children = [{{
+                              type: 'paragraph',
+                              children: [{{ text: \\"{safe_text}\\" }}]
+                            }}];
+                            editor.onChange();
+                          }}
+                          setTimeout(async () => {{
+                            const btn = document.querySelector('[data-test=editor-post-button]');
+                            if (!btn) return;
+                            const bfk = Object.keys(btn).find(k => k.startsWith('__reactFiber'));
+                            let bf = btn[bfk];
+                            for (let i = 0; i < 15 && bf; i++) {{
+                              if (bf.memoizedProps && bf.memoizedProps.onPost) {{
+                                await bf.memoizedProps.onPost();
+                                break;
+                              }}
+                              bf = bf.return;
+                            }}
+                          }}, 500);
+                        }})();
+                      `;
+                      document.documentElement.appendChild(s);
+                      s.remove();
+                    }})()
+                    "
+                    return "POSTED_CMC"
+                end if
+            end repeat
+        end repeat
+        return "NO_CMC_TAB"
+    end tell
+    """
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "osascript",
+            "-e",
+            script,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, _ = await proc.communicate()
+        return b"POSTED_CMC" in stdout
+    except Exception:
         return False
 
 
