@@ -10,6 +10,7 @@ import urllib.parse
 from pathlib import Path
 from typing import Any
 
+from dotenv import load_dotenv
 from promoter import (
     auto_post_tweet_via_chrome,
     build_viral_promo_pack,
@@ -24,6 +25,7 @@ logging.basicConfig(
 logger = logging.getLogger("XSniper")
 
 BASE_DIR = Path(__file__).resolve().parent
+load_dotenv(BASE_DIR / ".env")
 SNIPER_DB = BASE_DIR / "x_sniper_state.db"
 CHANNEL_HANDLE = "@WhaleRadarGlobal"
 BOT_HANDLE = "@WhaleAlphaStars_bot"

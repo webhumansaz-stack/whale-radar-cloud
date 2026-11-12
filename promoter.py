@@ -138,10 +138,10 @@ async def auto_post_tweet_via_chrome(tweet_text: str) -> bool:
             repeat with w from 1 to count of windows
                 repeat with t from 1 to count of tabs of window w
                     set u to URL of tab t of window w
-                    if u contains "x.com/intent/post" then
+                    if u contains "x.com" or u contains "twitter.com" then
                         set res to execute tab t of window w javascript "
                         (() => {
-                          const btn = document.querySelector('[data-testid=\\"tweetButton\\"]');
+                          const btn = document.querySelector('[data-testid=\\"tweetButton\\"], [data-testid=\\"tweetButtonInline\\"]');
                           if (btn && !btn.getAttribute('aria-disabled')) {
                             btn.click();
                             return 'POSTED';
@@ -198,19 +198,6 @@ async def post_to_cmc_cloud(
     import os
     import aiohttp
 
-    auth_token = os.getenv("CMC_AUTH_TOKEN", "").strip()
-    cookies = os.getenv("CMC_COOKIE", "").strip()
-    if not auth_token or not cookies:
-        return False
-
-    csrf = ""
-    fvideo = "33380f349d5b95b38d26ac443cc0da6ea637283c"
-    for part in cookies.split("; "):
-        if part.startswith("x-csrf-token="):
-            csrf = part.split("=", 1)[1]
-        elif part.startswith("BNC_FV_KEY="):
-            fvideo = part.split("=", 1)[1]
-
     sym = str(signal.get("symbol") or "SOL").upper()
     chain = str(signal.get("chain") or "SOLANA").upper()
     buy_ratio = float(signal.get("buy_ratio") or 72.0)
@@ -254,6 +241,19 @@ async def post_to_cmc_cloud(
     ]
     body_text = random.choice(note_templates)
     full_post_text = anchor_tag + body_text
+
+    auth_token = os.getenv("CMC_AUTH_TOKEN", "").strip()
+    cookies = os.getenv("CMC_COOKIE", "").strip()
+    if not auth_token or not cookies:
+        return await auto_post_cmc_via_chrome(full_post_text)
+
+    csrf = ""
+    fvideo = "33380f349d5b95b38d26ac443cc0da6ea637283c"
+    for part in cookies.split("; "):
+        if part.startswith("x-csrf-token="):
+            csrf = part.split("=", 1)[1]
+        elif part.startswith("BNC_FV_KEY="):
+            fvideo = part.split("=", 1)[1]
 
     payload = {
         "bullish": True,
