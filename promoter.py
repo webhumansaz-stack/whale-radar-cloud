@@ -222,21 +222,22 @@ async def post_to_cmc_cloud(
         anchor = random.choice([CMC_TOKEN_MAP["SOL"], CMC_TOKEN_MAP["BTC"], CMC_TOKEN_MAP["PEPE"]])
 
     anchor_tag = f"${anchor['symbol']}"
+    multi_tags = "$BTC $SOL $ETH $PEPE"
     note_templates = [
         (
             f" On-Chain Orderflow Desk — Tracking unusual 1H buy-side skew on ${sym} ({chain.capitalize()} DEX): "
             f"{buys_1h} buys vs {sells_1h} sells ({buy_ratio:.0f}% buy flow, {ch_1h:+.1f}% 1H delta) across {liq_k} pool depth. "
-            f"Contract passed RugCheck/GoPlus verification. Live orderflow feed on Telegram: {DEFAULT_PUBLIC_CHANNEL_HANDLE} | Bot: @WhaleAlphaStars_bot"
+            f"Contract passed RugCheck/GoPlus verification. Live orderflow feed on Telegram: {DEFAULT_PUBLIC_CHANNEL_HANDLE} | Bot: @WhaleAlphaStars_bot ({multi_tags})"
         ),
         (
             f" Spot & DEX Flow Update — Sustained whale accumulation flagged on ${sym} ({chain.capitalize()}) with "
             f"{buy_ratio:.0f}% 1H buy-side dominance ({buys_1h}B / {sells_1h}S) on {vol_k} 24H volume and {liq_k} locked LP. "
-            f"Full contract audit & execution zones on Telegram: {DEFAULT_PUBLIC_CHANNEL_HANDLE}"
+            f"Full contract audit & execution zones on Telegram: {DEFAULT_PUBLIC_CHANNEL_HANDLE} ({multi_tags})"
         ),
         (
             f" Quantitative Liquidity Alert — ${sym} ({chain.capitalize()}) showing {buy_ratio:.0f}% net buy-side imbalance "
             f"over the last 60m ({buys_1h} buys / {sells_1h} sells, {liq_k} liquidity) with zero mint/freeze risk flags. "
-            f"Real-time whale radar & CEX arbitrage spreads on Telegram: {DEFAULT_PUBLIC_CHANNEL_HANDLE}"
+            f"Real-time whale radar & CEX arbitrage spreads on Telegram: {DEFAULT_PUBLIC_CHANNEL_HANDLE} ({multi_tags})"
         ),
     ]
     body_text = random.choice(note_templates)
@@ -255,6 +256,15 @@ async def post_to_cmc_cloud(
         elif part.startswith("BNC_FV_KEY="):
             fvideo = part.split("=", 1)[1]
 
+    all_currencies = [
+        CMC_TOKEN_MAP["BTC"],
+        CMC_TOKEN_MAP["SOL"],
+        CMC_TOKEN_MAP["ETH"],
+        CMC_TOKEN_MAP["PEPE"],
+    ]
+    if anchor not in all_currencies:
+        all_currencies.insert(0, anchor)
+
     payload = {
         "bullish": True,
         "content": full_post_text,
@@ -272,7 +282,8 @@ async def post_to_cmc_cloud(
             ]
         ),
         "currencies": [
-            {"id": anchor["id"], "symbol": anchor["symbol"], "slug": anchor["slug"]}
+            {"id": c["id"], "symbol": c["symbol"], "slug": c["slug"]}
+            for c in all_currencies
         ],
         "rwas": [],
         "mentions": [],

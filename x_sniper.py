@@ -31,10 +31,11 @@ CHANNEL_HANDLE = "@WhaleRadarGlobal"
 BOT_HANDLE = "@WhaleAlphaStars_bot"
 
 SEARCH_QUERIES = [
-    '("What memecoin" OR "Shill me" OR "#100xgem" OR "#memecoin") min_faves:2',
-    "($SOL OR #Solana) (memecoin OR whale OR volume) min_faves:4",
-    "($PEPE OR $WIF OR $BONK OR #Base) (buying OR flow OR whale) min_faves:4",
-    '("next 100x" OR "dexscreener" OR "on-chain") ($SOL OR $ETH) min_faves:3',
+    "(from:WatcherGuru OR from:whale_alert OR from:lookonchain OR from:SolanaFloor OR from:dexscreener OR from:WuBlockchain)",
+    "($SOL OR #Solana) (whale OR volume OR memecoin OR breakout) min_faves:5",
+    "(from:Cointelegraph OR from:CoinMarketCap OR from:coingecko OR from:rovercrc OR from:ashcryptoreal)",
+    "($PEPE OR $WIF OR $BONK OR $BTC) (whale OR orderflow OR accumulation) min_faves:5",
+    '("What memecoin" OR "100x gem" OR "dexscreener" OR "on-chain") ($SOL OR $ETH) min_faves:3',
 ]
 
 
