@@ -273,7 +273,7 @@ class WhaleRadarBot:
             if ref_str.isdigit():
                 referred_by = int(ref_str)
 
-        _, rewarded_referrer = self.db.upsert_user(
+        is_new_user, rewarded_referrer = self.db.upsert_user(
             user_id=user_id,
             username=username,
             first_name=first_name,
@@ -329,6 +329,61 @@ class WhaleRadarBot:
         # Deep-link: ?start=vip
         if arg == "vip":
             await self.send_vip_offer(chat_id, user_id)
+            return
+
+        # Deep-link: ?start=arb
+        if arg == "arb":
+            arb_report = await self.scanner.scan_cex_arbitrage()
+            await self.send_message(
+                chat_id,
+                arb_report,
+                reply_markup={
+                    "inline_keyboard": [
+                        [{"text": "🔄 Refresh Arbitrage Spreads", "callback_data": "menu:arb"}],
+                        [{"text": f"👑 Join 24/7 VIP Instant Feed ({self.cfg.price_vip_monthly_stars} ⭐/mo)", "callback_data": "menu:vip"}],
+                        [{"text": "🔙 Main Menu", "callback_data": "menu:home"}],
+                    ]
+                },
+            )
+            return
+
+        # Deep-link: ?start=scanner or ?start=scan
+        if arg in ("scanner", "scan"):
+            await self.send_message(
+                chat_id,
+                "🕵️‍♂️ <b>ON-CHAIN TOKEN SECURITY & WHALE AUDITOR</b>\n"
+                "━━━━━━━━━━━━━━━━━━━━━━\n"
+                "Send any <b>Token Ticker</b> (e.g. <code>SOL</code>, <code>PEPE</code>, <code>WIF</code>, <code>BONK</code>) "
+                "or paste a <b>Smart Contract Address</b> directly in this chat to run a live DEX liquidity, orderflow & RugCheck/GoPlus security audit.",
+                reply_markup=self.main_menu_keyboard(user_id),
+            )
+            return
+
+        # Deep-link: ?start=welcome_gift or new user signup bonus
+        if arg == "welcome_gift" or is_new_user:
+            user_row = self.db.get_user(user_id) or {}
+            credits = int(user_row.get("credits") or 0)
+            if credits == 0 and arg == "welcome_gift":
+                credits = self.db.add_credits(user_id, 1)
+            recent = self.db.get_recent_signals(limit=1)
+            latest_sid = recent[0]["signal_id"] if recent else ""
+            gift_rows = []
+            if latest_sid:
+                gift_rows.append(
+                    [
+                        {
+                            "text": f"🎁 Unlock Latest Signal ({latest_sid}) For Free",
+                            "callback_data": f"credit_unlock:{latest_sid}",
+                        }
+                    ]
+                )
+            gift_rows.extend(self.main_menu_keyboard(user_id)["inline_keyboard"])
+            await self.send_message(
+                chat_id,
+                self.welcome_text(first_name, user_id)
+                + f"\n\n🎁 <b>WELCOME BONUS ACTIVE:</b> You have <b>{credits} Free Signal Unlock Credit</b> ready to use! Tap the button below to unlock our latest Whale Signal for free:",
+                reply_markup={"inline_keyboard": gift_rows},
+            )
             return
 
         # Standard /start
@@ -719,7 +774,7 @@ class WhaleRadarBot:
                 return
             promo = build_viral_promo_pack(
                 sig,
-                public_channel_url="https://t.me/WhaleRadarGlobal77",
+                public_channel_url="https://t.me/WhaleRadarGlobal",
                 bot_username=self.cfg.bot_username or "WhaleAlphaStars_bot",
             )
             await self.send_message(
@@ -758,7 +813,7 @@ class WhaleRadarBot:
                 return
             promo = build_viral_promo_pack(
                 sig,
-                public_channel_url="https://t.me/WhaleRadarGlobal77",
+                public_channel_url="https://t.me/WhaleRadarGlobal",
                 bot_username=self.cfg.bot_username or "WhaleAlphaStars_bot",
             )
             await self.send_message(

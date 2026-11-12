@@ -136,8 +136,8 @@ class Database:
 
             conn.execute(
                 """
-                INSERT INTO users (user_id, username, first_name, joined_at, referred_by)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO users (user_id, username, first_name, joined_at, credits, referred_by)
+                VALUES (?, ?, ?, ?, 1, ?)
                 """,
                 (user_id, username or "", first_name or "", now, valid_ref),
             )
