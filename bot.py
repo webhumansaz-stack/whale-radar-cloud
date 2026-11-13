@@ -237,10 +237,18 @@ class WhaleRadarBot:
         self, post_to_channels: bool = True
     ) -> Optional[dict[str, Any]]:
         signal = await self.scanner.discover_whale_signal(
-            exclude_checker=lambda addr: self.db.has_recent_token_signal(addr, 7200)
+            exclude_checker=lambda addr: self.db.has_recent_token_signal(addr, 14400)
         )
         if not signal:
-            signal = await self.scanner.discover_whale_signal(exclude_checker=None)
+            recent_rows = self.db.get_recent_signals(limit=10)
+            recent_addrs = {
+                str(r.get("token_address") or "").lower()
+                for r in recent_rows
+                if r.get("token_address")
+            }
+            signal = await self.scanner.discover_whale_signal(
+                exclude_checker=lambda addr: str(addr).lower() in recent_addrs
+            )
         if not signal:
             return None
 

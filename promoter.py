@@ -37,22 +37,30 @@ def build_viral_promo_pack(
 
     tweet_variants = [
         (
-            f"Unusual 1h buy-side skew on ${sym} ({chain} DEX) — {buys_1h} buys vs {sells_1h} sells "
-            f"({buy_ratio:.0f}% buy flow) with {liq_k} pool liquidity holding steady.\n\n"
-            f"Contract passed RugCheck/GoPlus. Full orderflow log on Telegram: t.me/WhaleRadarGlobal\n\n"
-            f"${sym} $SOL $ETH"
+            f"🚨 1H WHALE ORDERFLOW SKEW: ${sym} ({chain} DEX)\n\n"
+            f"• Flow: {buy_ratio:.0f}% net buy dominance ({buys_1h}B vs {sells_1h}S)\n"
+            f"• Pool LP: {liq_k} | 24h Vol: {vol_k}\n"
+            f"• Security: RugCheck / GoPlus clean (No freeze/mint)\n\n"
+            f"📡 Live Feed: t.me/WhaleRadarGlobal\n"
+            f"🔍 Free CA Auditor: t.me/{bot_username}\n\n"
+            f"${sym} $SOL $BTC $PEPE #Solana #memecoin #crypto"
         ),
         (
-            f"Tracking steady accumulation on ${sym} ({chain}). 1h orderflow sitting at "
-            f"{buy_ratio:.0f}% buy-side ({ch_1h:+.1f}% delta) on {vol_k} 24h volume.\n\n"
-            f"Raw contract audit & execution zones on Telegram: t.me/WhaleRadarGlobal\n\n"
-            f"${sym} $SOL $PEPE"
+            f"🐋 ON-CHAIN ACCUMULATION DETECTED: ${sym} ({chain})\n\n"
+            f"1h buy-side delta {ch_1h:+.1f}% with {buy_ratio:.0f}% buy dominance ({buys_1h} buys / {sells_1h} sells).\n"
+            f"Liquidity holding at {liq_k}.\n\n"
+            f"👉 Live Orderflow Feed: t.me/WhaleRadarGlobal\n"
+            f"🤖 Instant Contract Scanner: t.me/{bot_username}\n\n"
+            f"${sym} $SOL $WIF $BONK #crypto #SolanaMemeCoins"
         ),
         (
-            f"On-chain desk flagged ${sym} on {chain} — {buys_1h}B / {sells_1h}S over the last 60m "
-            f"({buy_ratio:.0f}% buy imbalance, {liq_k} LP).\n\n"
-            f"Live feed on Telegram: t.me/WhaleRadarGlobal (Scanner: t.me/{bot_username})\n\n"
-            f"${sym} $WIF $SOL"
+            f"⚡ QUANT RADAR ALERT: Unusual institutional buy pressure on ${sym} ({chain} DEX)\n\n"
+            f"• Dominance: {buy_ratio:.0f}% 1h buy skew\n"
+            f"• Activity: {buys_1h} Buys / {sells_1h} Sells\n"
+            f"• Verified depth: {liq_k} LP\n\n"
+            f"Real-time whale entries & execution zones: t.me/WhaleRadarGlobal\n"
+            f"Audit any token for free: t.me/{bot_username}\n\n"
+            f"${sym} $SOL $ETH $PEPE #cryptotrading"
         ),
     ]
     tweet_plain = random.choice(tweet_variants)

@@ -125,18 +125,23 @@ class MarketScanner:
         async with aiohttp.ClientSession() as session:
             candidate_pairs: list[dict[str, Any]] = []
 
-            boosts = await self._get_json(
-                session, "https://api.dexscreener.com/token-boosts/top/v1"
-            )
+            # 1. Fetch top & latest boosted tokens and new verified token profiles
             token_addrs: list[str] = []
-            if isinstance(boosts, list):
-                for item in boosts[:25]:
-                    addr = item.get("tokenAddress")
-                    if addr and addr not in token_addrs:
-                        token_addrs.append(addr)
+            for ep in (
+                "https://api.dexscreener.com/token-boosts/top/v1",
+                "https://api.dexscreener.com/token-boosts/latest/v1",
+                "https://api.dexscreener.com/token-profiles/latest/v1",
+            ):
+                feed = await self._get_json(session, ep)
+                if isinstance(feed, list):
+                    for item in feed[:30]:
+                        addr = item.get("tokenAddress")
+                        if addr and addr not in token_addrs:
+                            token_addrs.append(addr)
 
-            if token_addrs:
-                batch = ",".join(token_addrs[:15])
+            # Query multi-token batches from Dexscreener
+            for i in range(0, min(60, len(token_addrs)), 30):
+                batch = ",".join(token_addrs[i : i + 30])
                 dex_data = await self._get_json(
                     session,
                     f"https://api.dexscreener.com/latest/dex/tokens/{batch}",
@@ -146,8 +151,15 @@ class MarketScanner:
                 ):
                     candidate_pairs.extend(dex_data["pairs"])
 
-            for query in ("SOL", "BASE", "PEPE", "VIRTUAL", "AI", "BONK", "WIF", "SUI", "ARB", "AAVE"):
-                if len(candidate_pairs) >= 90:
+            # 2. Query high-velocity ecosystem tickers across Solana, Base, EVM
+            search_keywords = (
+                "SOL", "BASE", "PEPE", "VIRTUAL", "AI", "BONK", "WIF", "SUI",
+                "TRUMP", "FARTCOIN", "SPX", "GOAT", "POPCAT", "BRETT", "ME",
+                "PNUT", "CHILLGUY", "ACT", "PENGU", "USUAL", "MOODENG", "GRASS",
+                "DRIFT", "JUP", "RAY", "AAVE", "ARB", "RENDER", "NEAR", "INJ"
+            )
+            for query in search_keywords:
+                if len(candidate_pairs) >= 160:
                     break
                 search_res = await self._get_json(
                     session,
@@ -156,7 +168,7 @@ class MarketScanner:
                 if isinstance(search_res, dict) and isinstance(
                     search_res.get("pairs"), list
                 ):
-                    candidate_pairs.extend(search_res["pairs"][:15])
+                    candidate_pairs.extend(search_res["pairs"][:10])
 
             scored_candidates: list[tuple[int, dict[str, Any]]] = []
             seen_tokens: set[str] = set()
@@ -206,14 +218,14 @@ class MarketScanner:
                 vol_1h = float(vol_dict.get("h1") or 0)
                 fdv = float(pair.get("fdv") or pair.get("marketCap") or 0)
 
-                if liq < 55_000 or vol_24h < 75_000 or fdv < 120_000:
+                if liq < 25_000 or vol_24h < 50_000 or fdv < 80_000:
                     continue
 
                 txns_1h = (pair.get("txns") or {}).get("h1") or {}
                 buys_1h = int(txns_1h.get("buys") or 0)
                 sells_1h = int(txns_1h.get("sells") or 0)
                 total_tx_1h = buys_1h + sells_1h
-                if total_tx_1h < 30:
+                if total_tx_1h < 25:
                     continue
 
                 buy_ratio = (buys_1h / total_tx_1h) * 100.0
@@ -254,12 +266,14 @@ class MarketScanner:
             best_score: int = -1
             security_summary = "Verified active DEX liquidity pool"
 
-            for cand_score, cand_pair in scored_candidates[:6]:
+            for cand_score, cand_pair in scored_candidates[:15]:
                 c_base = cand_pair.get("baseToken") or {}
                 c_addr = str(c_base.get("address") or "")
                 c_chain = str(cand_pair.get("chainId") or "SOLANA").upper()
+                if exclude_checker and exclude_checker(c_addr):
+                    continue
                 sec = await self.check_token_security(session, c_chain, c_addr)
-                if "HIGH RISK" in sec or "Note:" in sec:
+                if "HIGH RISK" in sec:
                     continue
                 best_pair = cand_pair
                 best_score = cand_score
@@ -267,7 +281,14 @@ class MarketScanner:
                 break
 
             if not best_pair and scored_candidates:
-                best_score, best_pair = scored_candidates[0]
+                for cand_score, cand_pair in scored_candidates:
+                    c_base = cand_pair.get("baseToken") or {}
+                    c_addr = str(c_base.get("address") or "")
+                    if exclude_checker and exclude_checker(c_addr):
+                        continue
+                    best_pair = cand_pair
+                    best_score = cand_score
+                    break
 
             if not best_pair:
                 return None

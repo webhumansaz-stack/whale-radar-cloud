@@ -13,12 +13,12 @@ Built for quantitative traders, liquidity providers, and active on-chain partici
 
 ## 🔗 Live Access & Real-Time Feeds
 
-* **📡 Public Orderflow Channel (Free Delay Feed & Market Recaps):**  
+* **📡 Public Orderflow Channel (Free Live Delay Feed & Market Recaps):**  
   👉 **[Join `@WhaleRadarGlobal` (`t.me/WhaleRadarGlobal`)](https://t.me/WhaleRadarGlobal)**
-* **⚡ Interactive Bot Terminal (Instant Contract Audits, CA Unlocks & VIP Pass):**  
-  👉 **[Launch `@WhaleAlphaStars_bot` (`t.me/WhaleAlphaStars_bot`)](https://t.me/WhaleAlphaStars_bot)**
-* **📊 X (Twitter) & CoinMarketCap Desk Notes:**  
-  👉 **[`@WhaleAlphaStar` (X)](https://x.com/WhaleAlphaStar)** · **[`@WhaleRadarGlobal` (CMC)](https://coinmarketcap.com/community/profile/WhaleRadarGlobal/)**
+* **⚡ Interactive Bot Terminal (Instant Contract Audits, Free CA Unlock & VIP Pass):**  
+  👉 **[Launch `@WhaleAlphaStars_bot` (`t.me/WhaleAlphaStars_bot?start=welcome_gift`)](https://t.me/WhaleAlphaStars_bot?start=welcome_gift)**
+* **📊 Public Directories & Social Feeds:**  
+  👉 **[`@WhaleAlphaStar` (X/Twitter)](https://x.com/WhaleAlphaStar)** · **[Telemetr.io Verified Listing](https://telemetr.io/en/channel/4NmZT4)** · **[TelegramGroups.me Catalog](https://telegramgroups.me)**
 
 ---
 
