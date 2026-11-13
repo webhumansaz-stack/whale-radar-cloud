@@ -99,17 +99,14 @@ def build_viral_promo_pack(
 
 
 async def auto_post_tweet_via_chrome(tweet_text: str) -> bool:
-    intent_url = "https://x.com/intent/post?text=" + urllib.parse.quote(
-        tweet_text, safe=""
-    )
-    nav_script = f"""
+    nav_script = """
     tell application "Google Chrome"
         set foundTab to false
         repeat with w from 1 to count of windows
             repeat with t from 1 to count of tabs of window w
                 set u to URL of tab t of window w
                 if u contains "x.com" or u contains "twitter.com" then
-                    set URL of tab t of window w to "{intent_url}"
+                    set URL of tab t of window w to "https://x.com/compose/post"
                     set foundTab to true
                     exit repeat
                 end if
@@ -133,21 +130,27 @@ async def auto_post_tweet_via_chrome(tweet_text: str) -> bool:
 
         await asyncio.sleep(5.5)
 
-        click_script = """
+        safe_text = tweet_text.replace("\\", "\\\\").replace('"', '\\"').replace("\n", " ")
+        insert_and_post_script = f"""
         tell application "Google Chrome"
             repeat with w from 1 to count of windows
                 repeat with t from 1 to count of tabs of window w
                     set u to URL of tab t of window w
                     if u contains "x.com" or u contains "twitter.com" then
                         set res to execute tab t of window w javascript "
-                        (() => {
-                          const btn = document.querySelector('[data-testid=\\"tweetButton\\"], [data-testid=\\"tweetButtonInline\\"]');
-                          if (btn && !btn.getAttribute('aria-disabled')) {
-                            btn.click();
-                            return 'POSTED';
-                          }
-                          return 'NOT_READY';
-                        })()
+                        (() => {{
+                          const ed = document.querySelector('[data-testid=\\"tweetTextarea_0\\"], [role=\\"textbox\\"]');
+                          if (!ed) return 'NO_EDITOR';
+                          ed.focus();
+                          document.execCommand('insertText', false, \\"{safe_text}\\");
+                          setTimeout(() => {{
+                            const btn = document.querySelector('[data-testid=\\"tweetButton\\"], [data-testid=\\"tweetButtonInline\\"]');
+                            if (btn && !btn.getAttribute('aria-disabled')) {{
+                              btn.click();
+                            }}
+                          }}, 600);
+                          return 'POSTED';
+                        }})()
                         "
                         return res
                     end if
@@ -158,7 +161,7 @@ async def auto_post_tweet_via_chrome(tweet_text: str) -> bool:
         proc2 = await asyncio.create_subprocess_exec(
             "osascript",
             "-e",
-            click_script,
+            insert_and_post_script,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
