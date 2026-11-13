@@ -321,20 +321,18 @@ class MarketScanner:
             masked_sym = _mask_symbol(symbol)
             masked_addr = _mask_address(token_addr)
 
-            # Institutional Quant Desk style — no AI emoji spam
             teaser_text = (
-                f"<b>[ON-CHAIN ORDERFLOW] {html.escape(chain)} — Desk Alert</b>\n"
-                f"Ref: <code>{signal_id}</code>\n"
-                f"──────────────────────\n"
-                f"<b>Asset:</b> <code>{html.escape(masked_sym)}</code> (Contract: <code>{html.escape(masked_addr)}</code>)\n"
-                f"<b>1h Orderflow:</b> <b>{buy_ratio:.1f}% buy-side</b> ({buys_1h} buys / {sells_1h} sells)\n"
-                f"<b>Price Delta:</b> 1h <code>{ch_1h:+.2f}%</code> | 24h <code>{ch_24h:+.2f}%</code>\n"
-                f"<b>24h Volume:</b> <code>{_fmt_usd(vol_24h)}</code>\n"
-                f"<b>Pool Liquidity:</b> <code>{_fmt_usd(liq_usd)}</code> | <b>FDV:</b> <code>{_fmt_usd(fdv)}</code>\n"
-                f"<b>Contract Audit:</b> {security_summary}\n"
-                f"<b>Flow Conviction:</b> <code>{best_score}/100</code>\n"
-                f"──────────────────────\n"
-                f"<i>Full contract address, ticker, DEX pair link & execution levels are available via single unlock or VIP desk access below.</i>"
+                f"🚨 <b>WHALE ACCUMULATION RADAR | {html.escape(chain)}</b>\n"
+                f"Ref: <code>{signal_id}</code> | Conviction: <b>{best_score}/100</b> 🔥\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━\n"
+                f"💎 <b>Asset:</b> <code>{html.escape(masked_sym)}</code> (CA: <code>{html.escape(masked_addr)}</code>)\n"
+                f"🌊 <b>1h Orderflow:</b> <b>{buy_ratio:.1f}% BUY-SIDE</b> ({buys_1h}B vs {sells_1h}S)\n"
+                f"📈 <b>Price Delta:</b> 1h <code>{ch_1h:+.2f}%</code> | 24h <code>{ch_24h:+.2f}%</code>\n"
+                f"💧 <b>Pool LP:</b> <code>{_fmt_usd(liq_usd)}</code> | <b>24h Vol:</b> <code>{_fmt_usd(vol_24h)}</code>\n"
+                f"🛡 <b>Security Audit:</b> <b>{security_summary}</b>\n"
+                f"🎯 <b>Targets:</b> <code>{targets_text}</code>\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━\n"
+                f"👇 <i>Reveal exact Token Name, Contract & DEX Pair below:</i>"
             )
 
             full_text = (

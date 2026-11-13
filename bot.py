@@ -147,18 +147,24 @@ class WhaleRadarBot:
             "inline_keyboard": [
                 [
                     {
-                        "text": f"🔓 Unlock Signal & Contract ({self.cfg.price_unlock_signal_stars} ⭐)",
+                        "text": f"🔓 Reveal Token & Contract ({self.cfg.price_unlock_signal_stars} ⭐)",
                         "url": f"https://t.me/{bot_user}?start=unlock_{signal_id}",
                     }
                 ],
                 [
                     {
-                        "text": f"👑 Join 24/7 VIP Instant Feed ({self.cfg.price_vip_monthly_stars} ⭐/mo)",
-                        "url": f"https://t.me/{bot_user}?start=vip",
+                        "text": "🎁 Claim 1 Free Signal Unlock (0 ⭐)",
+                        "url": f"https://t.me/{bot_user}?start=welcome_gift",
                     },
                     {
                         "text": "🕵️‍♂️ Free Token Scanner",
                         "url": f"https://t.me/{bot_user}?start=scanner",
+                    },
+                ],
+                [
+                    {
+                        "text": f"👑 30-Day VIP Instant Feed ({self.cfg.price_vip_monthly_stars} ⭐)",
+                        "url": f"https://t.me/{bot_user}?start=vip",
                     },
                 ],
             ]
