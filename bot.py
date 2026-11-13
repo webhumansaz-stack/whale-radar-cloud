@@ -1257,7 +1257,9 @@ class WhaleRadarBot:
             self._announced_winners: set[str] = set()
 
         signals = self.db.get_recent_signals(limit=20)
-        session = await self._get_session()
+        if self._session is None or self._session.closed:
+            self._session = aiohttp.ClientSession()
+        session = self._session
         for s in signals:
             sid = s["signal_id"]
             if sid in self._announced_winners:
@@ -1332,7 +1334,10 @@ class WhaleRadarBot:
         while True:
             try:
                 if self.cfg.public_channel_id or self.cfg.vip_channel_id:
-                    await self.check_and_broadcast_winner_recap()
+                    try:
+                        await self.check_and_broadcast_winner_recap()
+                    except Exception as rexc:
+                        logger.error("Winner recap error: %s", rexc)
                     sig = await self.generate_and_publish_signal(post_to_channels=True)
                     if sig:
                         logger.info(
